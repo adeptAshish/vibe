@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hexion</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- welcoming animated home scene -->
+  <div class="scene" aria-hidden="true">
+    <div class="sky"></div>
+    <div class="sun"></div>
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+    <div class="cloud c3"></div>
+    <div class="island"></div>
+    <div class="sea"></div>
+    <div class="floaties">
+      <span style="--x:8vw;--d:0s;--t:15s">🌲</span>
+      <span style="--x:22vw;--d:3s;--t:18s">🐑</span>
+      <span style="--x:38vw;--d:6s;--t:16s">🌾</span>
+      <span style="--x:54vw;--d:1.5s;--t:19s">🧱</span>
+      <span style="--x:70vw;--d:4.5s;--t:17s">⛰️</span>
+      <span style="--x:84vw;--d:2s;--t:20s">⛵</span>
+      <span style="--x:92vw;--d:7s;--t:15s">🎲</span>
+    </div>
+  </div>
+
+  <!-- ===================== LOBBY ===================== -->
+  <div id="lobby" class="screen">
+    <div class="lobby-card" id="lobbyCard">
+      <h1 class="logo">🎲 <span>Hexion</span></h1>
+      <p class="tagline">A 3D island you can orbit, zoom, and pan. Play with friends or bots.</p>
+
+      <div class="field">
+        <label>Your name</label>
+        <input id="nameInput" type="text" maxlength="14" placeholder="Enter your name" />
+      </div>
+
+      <div id="lobbyEntry">
+        <button id="createBtn" class="primary glow">Create a game</button>
+        <div class="or">or join an existing one</div>
+        <div class="join-row">
+          <input id="codeInput" type="text" maxlength="4" placeholder="CODE" style="text-transform:uppercase" />
+          <button id="joinBtn">Join</button>
+        </div>
+      </div>
+
+      <div id="lobbyWaiting" class="hidden">
+        <div class="lobby-cols">
+          <!-- LEFT: admin / controls -->
+          <div class="lobby-left">
+            <div class="room-code">Room code: <span id="roomCode"></span></div>
+            <p class="hint">Share the room code with friends (they open this site and click Join).</p>
+            <ul id="playerList" class="player-list"></ul>
+            <div id="hostControls" class="hidden">
+              <div class="setting-row">
+                <label>⏱️ Turn timer</label>
+                <select id="timerSelect">
+                  <option value="0">Off</option>
+                  <option value="30">30s</option>
+                  <option value="45">45s</option>
+                  <option value="60">60s</option>
+                  <option value="90">90s</option>
+                  <option value="120">2 min</option>
+                </select>
+              </div>
+              <div class="host-btns">
+                <button id="randomizeBtn">🗺️ Randomize map</button>
+                <button id="addBotBtn">🤖 Add bot</button>
+              </div>
+              <button id="startBtn" class="primary glow full">Start game</button>
+            </div>
+            <p id="waitMsg" class="hint hidden">Waiting for the host to start…</p>
+          </div>
+
+          <!-- RIGHT: full map preview -->
+          <div class="lobby-right">
+            <div class="map-title">🗺️ Map preview</div>
+            <div class="preview-wrap">
+              <canvas id="previewCanvas" width="720" height="640"></canvas>
+            </div>
+            <div id="difficultyBadge" class="difficulty-badge balanced" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="lobbyError" class="error"></div>
+    </div>
+  </div>
+
+  <!-- ===================== GAME ===================== -->
+  <div id="game" class="screen hidden">
+    <!-- left rulebook (book-opening effect) -->
+    <button id="rulebookTab" class="rulebook-tab" title="Quick rules">📖<span>Rules</span></button>
+    <div id="rulebook" class="rulebook book3d hidden">
+      <div class="rulebook-head">
+        <h2>📖 Quick Rulebook</h2>
+        <button id="rulebookClose" class="icon-btn">✕</button>
+      </div>
+      <div class="rulebook-body" id="rulebookBody"></div>
+    </div>
+
+    <div class="main-area">
+      <div class="board-pane">
+        <div class="topbar">
+          <button id="backBtn" class="icon-btn back" title="Leave game">← Home</button>
+          <div id="turnTimer" class="turn-timer hidden">
+            <svg viewBox="0 0 36 36" class="timer-ring">
+              <path class="ring-bg" d="M18 2.5 a 15.5 15.5 0 0 1 0 31 a 15.5 15.5 0 0 1 0 -31" />
+              <path id="ringFg" class="ring-fg" d="M18 2.5 a 15.5 15.5 0 0 1 0 31 a 15.5 15.5 0 0 1 0 -31" />
+            </svg>
+            <span id="timerText">--</span>
+          </div>
+          <div class="zoom-controls top-right">
+            <button id="gfxToggle" class="icon-btn view-btn" title="Graphics quality">✨ Extreme</button>
+            <button id="nightToggle" class="icon-btn night-toggle" title="Toggle night mode">🌙</button>
+            <button id="camReset" class="icon-btn view-btn" title="Reset camera">⤢</button>
+          </div>
+        </div>
+
+        <div id="three" class="three-host"></div>
+        <div id="gfxLoading" class="gfx-loading hidden">
+          <div class="gfx-loading-card">
+            <div class="gfx-spinner"></div>
+            <div id="gfxLoadingText" class="gfx-loading-text">Summoning the deep…</div>
+          </div>
+        </div>
+        <div id="banner" class="banner"></div>
+        <div id="diceFx" class="dice-fx hidden"><span id="die1">⚀</span><span id="die2">⚀</span></div>
+        <div class="hint-3d">🖱️ Drag to orbit · scroll to zoom · right-drag to pan</div>
+      </div>
+
+      <aside class="sidebar">
+        <div id="players" class="players"></div>
+        <div class="log-wrap">
+          <h3>Game log</h3>
+          <div id="log" class="log"></div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- bottom dock: real cards + actions -->
+    <div id="dock" class="dock">
+      <button id="dockToggle" class="dock-toggle" title="Collapse / expand">▾</button>
+      <div class="dock-inner">
+        <div class="dock-section roll-section">
+          <div class="dock-label">Dice</div>
+          <div id="rollSpot" class="roll-spot"></div>
+        </div>
+        <div class="dock-section hand-section">
+          <div class="dock-label">Your Resources</div>
+          <div id="handCards" class="card-row"></div>
+        </div>
+        <div class="dock-section dev-section">
+          <div class="dock-label">Development Cards</div>
+          <div id="devCardRow" class="card-row"></div>
+        </div>
+        <div class="dock-section bonus-section">
+          <div class="dock-label">Bonuses</div>
+          <div id="bonusRow" class="card-row"></div>
+        </div>
+        <div class="dock-section actions-section">
+          <div class="dock-label">Actions</div>
+          <div id="actions" class="actions"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- winner celebration -->
+    <div id="winOverlay" class="win-overlay hidden">
+      <canvas id="confetti"></canvas>
+      <div class="win-center">
+        <div class="win-congrats">CONGRATULATIONS</div>
+        <div id="winName" class="win-name">Player</div>
+        <div class="win-sub">wins the game! 🏆</div>
+        <button id="winPlayAgain" class="primary glow">Play again</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-box" id="modalBox"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="client3d.js"></script>
+</body>
+</html>
