@@ -1,7 +1,7 @@
 {
-  "name": "catan-web",
+  "name": "hexion2d",
   "version": "1.0.0",
-  "description": "A web-based Catan game with bots and local multiplayer",
+  "description": "A web-based Hexion game with bots and local multiplayer",
   "main": "server/index.js",
   "type": "commonjs",
   "scripts": {

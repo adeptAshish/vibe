@@ -1,4 +1,4 @@
-// bot.js — simple heuristic AI for Catan.
+// bot.js — simple heuristic AI for Hexion.
 // Bots place sensibly during setup and take reasonable build/trade actions on their turn.
 
 const { RESOURCES, COSTS } = require('./gameEngine');

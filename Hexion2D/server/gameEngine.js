@@ -1,4 +1,4 @@
-// gameEngine.js — authoritative Catan rules engine.
+// gameEngine.js — authoritative Hexion rules engine.
 // Handles setup, dice/production, building, trading, dev cards, robber,
 // longest road, largest army, and win detection.
 

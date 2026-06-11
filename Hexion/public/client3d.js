@@ -19,7 +19,7 @@ let timerInterval = null;
 // Graphics settings — "extreme" enables the heavy eye-candy (shadows, full sea
 // waves, dense tiles, dolphins, kraken, hi-res render). Defaults to Simple so the
 // game runs smoothly; the player opts in to Extreme from the top-right button.
-const gfx = { extreme: localStorage.getItem('catanExtreme') === '1', night: false };
+const gfx = { extreme: localStorage.getItem('hexionExtreme') === '1', night: false };
 let creatingDecor = false; // true while building decorative (persistent) islands
 
 // Per-build density multiplier — Simple mode thins out heavy decorative props so
@@ -77,16 +77,16 @@ const RULEBOOK_HTML = `
 // ===================================================================
 // LOBBY (identical behavior to the 2D version)
 // ===================================================================
-$('nameInput').value = localStorage.getItem('catanName') || '';
+$('nameInput').value = localStorage.getItem('hexionName') || '';
 
 $('createBtn').onclick = () => {
   myName = $('nameInput').value.trim() || 'Host';
-  localStorage.setItem('catanName', myName);
+  localStorage.setItem('hexionName', myName);
   socket.emit('createRoom', { name: myName }, (res) => { if (res.ok) { isHost = true; roomCode = res.code; } });
 };
 $('joinBtn').onclick = () => {
   myName = $('nameInput').value.trim() || 'Player';
-  localStorage.setItem('catanName', myName);
+  localStorage.setItem('hexionName', myName);
   const code = $('codeInput').value.trim().toUpperCase();
   if (!code) { showLobbyError('Enter a room code'); return; }
   socket.emit('joinRoom', { name: myName, code }, (res) => { if (res.ok) { isHost = false; roomCode = res.code; } else showLobbyError(res.error); });
@@ -117,7 +117,7 @@ function applyNight(on) {
   document.body.classList.toggle('night', on);
   const btn = $('nightToggle');
   if (btn) btn.textContent = on ? '☀️' : '🌙';
-  localStorage.setItem('catanNight', on ? '1' : '0');
+  localStorage.setItem('hexionNight', on ? '1' : '0');
   if (three.scene) applySceneNight(on);
 }
 if ($('nightToggle')) {
@@ -149,7 +149,7 @@ function applyGfxSettings(extreme) {
 
 function applyGfx(extreme) {
   gfx.extreme = extreme;
-  localStorage.setItem('catanExtreme', extreme ? '1' : '0');
+  localStorage.setItem('hexionExtreme', extreme ? '1' : '0');
   const btn = $('gfxToggle');
   if (btn) btn.textContent = extreme ? '✨ Extreme' : '○ Simple';
   if (!three.scene) return; // scene not built yet; effects applied in initThree
@@ -442,7 +442,7 @@ function initThree() {
   $('camReset').onclick = resetCamera;
 
   // apply persisted night mode now that the scene exists
-  applyNight(localStorage.getItem('catanNight') === '1');
+  applyNight(localStorage.getItem('hexionNight') === '1');
   applyGfx(gfx.extreme);
 }
 

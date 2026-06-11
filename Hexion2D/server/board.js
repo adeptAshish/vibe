@@ -1,10 +1,10 @@
-// board.js — generates the standard Catan board geometry and setup.
+// board.js — generates the standard Hexion board geometry and setup.
 // Uses pointy-top hexagons. Vertices/edges are de-duplicated geometrically so
 // adjacency between settlements, roads, and hexes is derived automatically.
 
 const HEX_SIZE = 60; // pixel radius of a hex (center to corner)
 
-// Standard Catan resource counts (19 hexes total)
+// Standard Hexion resource counts (19 hexes total)
 const RESOURCE_BAG = [
   ...Array(4).fill('lumber'),
   ...Array(4).fill('wool'),
@@ -17,7 +17,7 @@ const RESOURCE_BAG = [
 // Standard number tokens (18 of them, desert gets none)
 const NUMBER_BAG = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12];
 
-// Rows of the classic Catan island: 3-4-5-4-3
+// Rows of the classic Hexion island: 3-4-5-4-3
 const ROW_COUNTS = [3, 4, 5, 4, 3];
 
 function shuffle(arr) {

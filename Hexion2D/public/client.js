@@ -87,11 +87,11 @@ const RULEBOOK_HTML = `
 // ===================================================================
 // LOBBY
 // ===================================================================
-$('nameInput').value = localStorage.getItem('catanName') || '';
+$('nameInput').value = localStorage.getItem('hexionName') || '';
 
 $('createBtn').onclick = () => {
   myName = $('nameInput').value.trim() || 'Host';
-  localStorage.setItem('catanName', myName);
+  localStorage.setItem('hexionName', myName);
   socket.emit('createRoom', { name: myName }, (res) => {
     if (res.ok) { isHost = true; roomCode = res.code; }
   });
@@ -99,7 +99,7 @@ $('createBtn').onclick = () => {
 
 $('joinBtn').onclick = () => {
   myName = $('nameInput').value.trim() || 'Player';
-  localStorage.setItem('catanName', myName);
+  localStorage.setItem('hexionName', myName);
   const code = $('codeInput').value.trim().toUpperCase();
   if (!code) { showLobbyError('Enter a room code'); return; }
   socket.emit('joinRoom', { name: myName, code }, (res) => {
@@ -144,12 +144,12 @@ function applyNight(on) {
   document.body.classList.toggle('night', on);
   const btn = $('nightToggle');
   if (btn) btn.textContent = on ? '☀️' : '🌙';
-  localStorage.setItem('catanNight', on ? '1' : '0');
+  localStorage.setItem('hexionNight', on ? '1' : '0');
 }
 if ($('nightToggle')) {
   $('nightToggle').onclick = () => applyNight(!document.body.classList.contains('night'));
 }
-applyNight(localStorage.getItem('catanNight') === '1');
+applyNight(localStorage.getItem('hexionNight') === '1');
 
 // ---- Rulebook ----
 $('rulebookTab').onclick = () => { $('rulebook').classList.remove('hidden'); };

@@ -1,6 +1,6 @@
-# 🎲 Catan (Web)
+# 🎲 Hexion2D
 
-A full, browser-based Catan game. Play **solo against bots** or **multiplayer with friends** on your local network — all from one machine running the server.
+A full, browser-based Hexion game. Play **solo against bots** or **multiplayer with friends** on your local network — all from one machine running the server.
 
 ## Quick start
 
@@ -68,7 +68,7 @@ Share the public URL the tool prints. (If the firewall prompts on first run, all
 ```
 server/
   index.js       # Express + Socket.IO server, rooms, bot loop
-  gameEngine.js  # Authoritative Catan rules
+  gameEngine.js  # Authoritative Hexion rules
   board.js       # Board geometry generation
   bot.js         # Heuristic bot AI
 public/

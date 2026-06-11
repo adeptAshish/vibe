@@ -1,7 +1,7 @@
 {
-  "name": "catan-web-3d",
+  "name": "hexion",
   "version": "1.0.0",
-  "description": "3D web-based Catan game (Three.js) with bots and local multiplayer",
+  "description": "3D web-based Hexion game (Three.js) with bots and local multiplayer",
   "main": "server/index.js",
   "type": "commonjs",
   "scripts": {
