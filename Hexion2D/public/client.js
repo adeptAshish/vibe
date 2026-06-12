@@ -122,6 +122,32 @@ $('backBtn').onclick = () => {
   }
 };
 
+// ---- Invite link (host shares a LAN URL with the room code baked in) ----
+let inviteBase = '';
+$('inviteBtn').onclick = async () => {
+  const link = `${inviteBase || window.location.origin}/?code=${roomCode}`;
+  try {
+    await navigator.clipboard.writeText(link);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = link; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch {}
+    ta.remove();
+  }
+  const btn = $('inviteBtn'); const old = btn.textContent;
+  btn.textContent = '✅ Link copied!';
+  setTimeout(() => { btn.textContent = old; }, 1600);
+};
+
+// ---- Auto-join when opened from an invite link (?code=ABCD) ----
+(function autoJoinFromUrl() {
+  const code = new URLSearchParams(location.search).get('code');
+  if (!code) return;
+  $('codeInput').value = code.toUpperCase().slice(0, 4);
+  if (($('nameInput').value || '').trim()) $('joinBtn').click(); // name known → jump in
+  else $('nameInput').focus();                                   // else just enter a name
+})();
+
 // ---- Dock collapse / expand ----
 $('dockToggle').onclick = () => {
   const dock = $('dock');
@@ -161,6 +187,7 @@ function showLobbyError(msg) { $('lobbyError').textContent = msg || ''; }
 
 socket.on('lobby', (room) => {
   roomCode = room.code;
+  inviteBase = room.lanUrl || window.location.origin;
   $('lobbyEntry').classList.add('hidden');
   $('lobbyWaiting').classList.remove('hidden');
   $('lobbyCard').classList.add('wide');

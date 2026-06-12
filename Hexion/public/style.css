@@ -240,11 +240,30 @@ button.full { width: 100%; }
 .gfx-loading-text { font-size: 15px; opacity: .92; animation: gfxPulse 1.4s ease-in-out infinite; }
 @keyframes gfxPulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
 .hint-3d {
-  position: absolute; bottom: 12px; right: 14px;
+  position: absolute; bottom: 12px; left: 14px;
   background: rgba(15,25,35,.72); backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,.1);
   padding: 6px 12px; border-radius: 16px; font-size: 12px; color: #cdd9e3;
   z-index: 5; pointer-events: none;
+}
+
+/* ---------- Mini map (bottom-right, rotates with the 3D view) ---------- */
+.minimap-wrap {
+  position: absolute; bottom: 12px; right: 14px;
+  width: 168px; padding: 6px 6px 8px;
+  background: rgba(13,24,36,.78); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 14px; box-shadow: 0 8px 26px rgba(0,0,0,.45);
+  overflow: hidden;
+  z-index: 6; pointer-events: none;
+}
+.minimap-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  color: #bcd0e0; text-align: center; margin-bottom: 3px; opacity: .9;
+}
+.minimap-wrap canvas {
+  display: block; width: 156px; height: 156px; border-radius: 10px;
+  background: radial-gradient(circle at 50% 45%, #224a6b, #122a40 80%);
 }
 
 /* ---------- Top bar ---------- */
