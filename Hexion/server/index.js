@@ -42,8 +42,16 @@ function lobbyState(room) {
     started: room.started,
     turnSeconds: room.turnSeconds,
     previewBoard: room.previewBoard,
+    lanUrl: lanBase(),
     players: room.players.map((p) => ({ id: p.id, name: p.name, isBot: p.isBot })),
   };
+}
+
+// Best LAN base URL (e.g. http://192.168.1.20:3001) for building invite links the
+// host can share with friends on the same Wi-Fi. Falls back to null on localhost.
+function lanBase() {
+  const ip = localIps()[0];
+  return ip ? `http://${ip}:${PORT}` : null;
 }
 
 function broadcastLobby(room) {
@@ -328,13 +336,25 @@ function handleLeave(socket) {
 
 function localIps() {
   const nets = os.networkInterfaces();
-  const ips = [];
-  Object.values(nets).forEach((list) => {
+  // Rank real Wi-Fi/Ethernet adapters ahead of virtual ones (Hyper-V, WSL, VPNs,
+  // container vnets). Those virtual adapters often have a private IP on a
+  // different subnet that friends on your Wi-Fi cannot reach — advertising it
+  // makes the game look "unreachable". We sort so the real LAN IP comes first.
+  const isVirtual = (name) => /v(eth|ethernet|net)|virtual|hyper-?v|wsl|docker|vpn|loopback|vbox|vmware|bridge/i.test(name);
+  const isPreferred = (name) => /wi-?fi|wlan|ethernet|en0|eth0/i.test(name);
+  const scored = [];
+  Object.entries(nets).forEach(([name, list]) => {
     (list || []).forEach((net) => {
-      if (net.family === 'IPv4' && !net.internal) ips.push(net.address);
+      if (net.family !== 'IPv4' || net.internal) return;
+      let score = 0;
+      if (isPreferred(name)) score -= 2;
+      if (isVirtual(name)) score += 5;
+      if (/^192\.168\./.test(net.address)) score -= 1; // common home/office LAN
+      scored.push({ ip: net.address, score });
     });
   });
-  return ips;
+  scored.sort((a, b) => a.score - b.score);
+  return scored.map((s) => s.ip);
 }
 
 server.listen(PORT, '0.0.0.0', () => {

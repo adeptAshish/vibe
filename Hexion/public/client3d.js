@@ -97,6 +97,32 @@ $('timerSelect').onchange = () => socket.emit('setTimer', { seconds: Number($('t
 $('startBtn').onclick = () => socket.emit('startGame', {}, (res) => { if (!res.ok) showLobbyError(res.error); });
 $('backBtn').onclick = () => { if (confirm('Leave the game and return to the home screen?')) { socket.emit('leaveRoom'); location.reload(); } };
 
+// ---- Invite link (host shares a LAN URL with the room code baked in) ----
+let inviteBase = '';
+$('inviteBtn').onclick = async () => {
+  const link = `${inviteBase || window.location.origin}/?code=${roomCode}`;
+  try {
+    await navigator.clipboard.writeText(link);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = link; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch {}
+    ta.remove();
+  }
+  const btn = $('inviteBtn'); const old = btn.textContent;
+  btn.textContent = '✅ Link copied!';
+  setTimeout(() => { btn.textContent = old; }, 1600);
+};
+
+// ---- Auto-join when opened from an invite link (?code=ABCD) ----
+(function autoJoinFromUrl() {
+  const code = new URLSearchParams(location.search).get('code');
+  if (!code) return;
+  $('codeInput').value = code.toUpperCase().slice(0, 4);
+  if (($('nameInput').value || '').trim()) $('joinBtn').click(); // name known → jump in
+  else $('nameInput').focus();                                   // else just enter a name
+})();
+
 // ---- Dock collapse / expand ----
 $('dockToggle').onclick = () => {
   const dock = $('dock');
@@ -191,6 +217,7 @@ function showLobbyError(msg) { $('lobbyError').textContent = msg || ''; }
 
 socket.on('lobby', (room) => {
   roomCode = room.code;
+  inviteBase = room.lanUrl || window.location.origin;
   $('lobbyEntry').classList.add('hidden');
   $('lobbyWaiting').classList.remove('hidden');
   $('lobbyCard').classList.add('wide');
@@ -265,6 +292,90 @@ function drawPreview(board) {
 
   c.restore();
   showDifficulty(board);
+}
+
+// In-game mini map (bottom-right). Top-down board that ROTATES with the 3D camera
+// so the player can always orient even when tile numbers are hidden by props.
+function drawMiniMap() {
+  const cv = $('miniMap');
+  if (!cv || !state || !state.board) return;
+  const b = state.board;
+  const c = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  c.clearRect(0, 0, W, H);
+
+  // fit the board to the canvas (radius from board centre, in board pixels). Use a
+  // generous margin so tiles never spill past the rounded panel, even when rotated.
+  const MARGIN = 18;
+  let maxR = 0;
+  b.hexes.forEach((h) => h.vertices.forEach((vid) => {
+    const v = b.vertices[vid];
+    maxR = Math.max(maxR, Math.hypot(v.x - BC.x, v.y - BC.y));
+  }));
+  const scale = (Math.min(W, H) / 2 - MARGIN) / (maxR || 1);
+
+  // clip everything to a rounded rect so nothing overfills the panel
+  c.save();
+  roundRect(c, 1, 1, W - 2, H - 2, 9);
+  c.clip();
+
+  // rotate so the camera's heading stays at the bottom of the map (viewer ≈ bottom)
+  const ang = three.controls ? three.controls.getAzimuthalAngle() : 0;
+  c.save();
+  c.translate(W / 2, H / 2);
+  c.rotate(ang);
+
+  // hex tiles
+  b.hexes.forEach((hex) => {
+    c.beginPath();
+    hex.vertices.forEach((vid, i) => {
+      const v = b.vertices[vid];
+      const x = (v.x - BC.x) * scale, y = (v.y - BC.y) * scale;
+      if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
+    });
+    c.closePath();
+    c.fillStyle = RES_COLORS[hex.resource];
+    c.fill();
+    c.lineWidth = 1; c.strokeStyle = 'rgba(8,30,46,.7)'; c.stroke();
+  });
+
+  // robber marker
+  if (state.robber != null && b.hexes[state.robber]) {
+    const r = b.hexes[state.robber];
+    const x = (r.cx - BC.x) * scale, y = (r.cy - BC.y) * scale;
+    c.beginPath(); c.arc(x, y, 5, 0, Math.PI * 2);
+    c.fillStyle = 'rgba(18,18,22,.9)'; c.fill();
+    c.lineWidth = 1; c.strokeStyle = 'rgba(255,255,255,.6)'; c.stroke();
+  }
+
+  // numbers — counter-rotate each label so it stays upright and readable
+  b.hexes.forEach((hex) => {
+    if (!hex.number) return;
+    const x = (hex.cx - BC.x) * scale, y = (hex.cy - BC.y) * scale;
+    c.save();
+    c.translate(x, y);
+    c.rotate(-ang);
+    const hot = hex.number === 6 || hex.number === 8;
+    c.beginPath(); c.arc(0, 0, 7, 0, Math.PI * 2);
+    c.fillStyle = 'rgba(245,236,215,.94)'; c.fill();
+    c.fillStyle = hot ? '#c0392b' : '#222';
+    c.font = `bold ${hot ? 9 : 8}px sans-serif`;
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(hex.number, 0, 0);
+    c.restore();
+  });
+
+  c.restore();   // undo rotate/translate
+  c.restore();   // undo clip
+
+  // fixed viewer indicator (a little triangle at the bottom = "you / camera")
+  c.fillStyle = 'rgba(255,255,255,.92)';
+  c.beginPath();
+  c.moveTo(W / 2, H - 4);
+  c.lineTo(W / 2 - 7, H - 14);
+  c.lineTo(W / 2 + 7, H - 14);
+  c.closePath();
+  c.fill();
 }
 
 // Estimate map difficulty/swinginess from clustering of high-production tiles.
@@ -354,9 +465,9 @@ const TZ = (y) => (y - BC.y) * S;
 function initThree() {
   const host = $('three');
   const scene = new THREE.Scene();
-  // pleasant bright day with a deep blue ocean (see applySceneNight for the full palette)
-  scene.background = new THREE.Color('#79bfe8');
-  scene.fog = new THREE.Fog('#aed6ef', 60, 150);
+  // pleasant SUNNY day with a relaxing light-blue ocean (see applySceneNight for the full palette)
+  scene.background = new THREE.Color('#8fd0ec');
+  scene.fog = new THREE.Fog('#bfe3f4', 62, 158);
 
   const camera = new THREE.PerspectiveCamera(50, host.clientWidth / host.clientHeight, 0.1, 500);
   camera.position.set(0, 26, 24);
@@ -373,15 +484,20 @@ function initThree() {
   host.appendChild(renderer.domElement);
 
   // lights — warm sunshine, balanced (not blown-out)
-  const hemi = new THREE.HemisphereLight(0xbcdcf2, 0x5f7050, 0.86);
+  const hemi = new THREE.HemisphereLight(0xc6e6f6, 0x647358, 0.77);
   scene.add(hemi);
-  const sun = new THREE.DirectionalLight(0xffe9c2, 0.95);
+  const sun = new THREE.DirectionalLight(0xffeccb, 0.87);
   sun.position.set(18, 38, 14);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
   sun.shadow.camera.near = 1; sun.shadow.camera.far = 120;
   sun.shadow.camera.left = -40; sun.shadow.camera.right = 40;
   sun.shadow.camera.top = 40; sun.shadow.camera.bottom = -40;
+  // Allow a SOFT amount of shadow self-shadowing ("acne") back onto the flat tile
+  // tops — it adds subtle surface texture the board looked bland without. We keep
+  // just a touch of bias so the banding stays faint instead of harsh/sharp.
+  sun.shadow.bias = -0.0006;
+  sun.shadow.normalBias = 0.06;
   scene.add(sun);
   three.hemi = hemi; three.sunLight = sun;
 
@@ -402,10 +518,10 @@ function initThree() {
 
   // animated sea (vertex-displaced waves) — metalness gives moon/sun reflections.
   // 60×60 (was 100×100) is plenty for smooth swells and far cheaper to displace.
-  const seaGeo = new THREE.PlaneGeometry(400, 400, 60, 60);
+  const seaGeo = new THREE.PlaneGeometry(400, 400, 72, 72);
   const sea = new THREE.Mesh(
     seaGeo,
-    new THREE.MeshStandardMaterial({ color: 0x1f80b2, roughness: 0.26, metalness: 0.5, flatShading: true })
+    new THREE.MeshStandardMaterial({ color: 0x3399cf, roughness: 0.34, metalness: 0.55, flatShading: true })
   );
   sea.rotation.x = -Math.PI / 2;
   sea.position.y = SEA_Y; // waterline — tiles dip below this so the island looks submerged
@@ -419,6 +535,9 @@ function initThree() {
   creatingDecor = true;
   addDecor(scene);
   creatingDecor = false;
+
+  // drifting clouds in the sky (day & night)
+  buildClouds(scene);
 
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -444,6 +563,45 @@ function initThree() {
   // apply persisted night mode now that the scene exists
   applyNight(localStorage.getItem('hexionNight') === '1');
   applyGfx(gfx.extreme);
+}
+
+// A soft puffy cloud — a cluster of flattened white spheres sharing one material
+// (so day/night tinting is a single color change).
+function makeCloud(rng, mat) {
+  const g = new THREE.Group();
+  const puffs = 4 + Math.floor(rng() * 4);
+  for (let i = 0; i < puffs; i++) {
+    const r = 1.6 + rng() * 2.2;
+    const puff = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), mat);
+    puff.position.set((rng() - 0.5) * 7, (rng() - 0.5) * 1.2, (rng() - 0.5) * 4);
+    puff.scale.y = 0.6;
+    g.add(puff);
+  }
+  return g;
+}
+
+// Drifting clouds high in the sky, visible day & night (tinted in applySceneNight).
+function buildClouds(scene) {
+  const rng = mulberry32(20240612);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 1, metalness: 0,
+    transparent: true, opacity: 0.82, flatShading: true, fog: true,
+  });
+  three.cloudMat = mat;
+  three.clouds = [];
+  const group = new THREE.Group();
+  const N = 12;
+  for (let i = 0; i < N; i++) {
+    const cl = makeCloud(rng, mat);
+    const sc = 0.8 + rng() * 1.6;
+    cl.scale.setScalar(sc);
+    cl.position.set((rng() - 0.5) * 150, 26 + rng() * 16, (rng() - 0.5) * 150);
+    cl.userData = { speed: 0.4 + rng() * 0.8 };
+    group.add(cl);
+    three.clouds.push(cl);
+  }
+  scene.add(group);
+  three.cloudGroup = group;
 }
 
 // Far-off + nearby decorative islands (some with houses & people), a lighthouse,
@@ -1041,25 +1199,28 @@ function applySceneNight(on) {
   gfx.night = on;
   if (!three.scene) return;
   if (on) {
-    // CALM MOONLIT NIGHT — deep blue, peaceful
-    three.scene.background = new THREE.Color('#10213a');
-    three.scene.fog = new THREE.Fog('#10213a', 55, 150);
-    if (three.hemi) { three.hemi.color.set(0x6f86ad); if (three.hemi.groundColor) three.hemi.groundColor.set(0x2a3346); three.hemi.intensity = 0.9; }
-    three.hemiBase = 0.9;
-    if (three.sunLight) { three.sunLight.color.set(0xaec4e8); three.sunLight.intensity = 0.75; } // cool moonlight
-    if (three.sea) { three.sea.material.color.set(0x16335c); three.sea.material.metalness = 0.55; three.sea.material.roughness = 0.22; }
-    if (three.sunOrb) three.sunOrb.material.color.set(0xeaf2ff);   // pale moon
-    if (three.sunGlow) three.sunGlow.material.color.set(0xbcd0f0);
+    // CALM MOONLIT NIGHT — deep blue but bright enough to read the board, with a
+    // shimmering moonlit ocean.
+    three.scene.background = new THREE.Color('#15294a');
+    three.scene.fog = new THREE.Fog('#15294a', 58, 158);
+    if (three.hemi) { three.hemi.color.set(0x7e98c0); if (three.hemi.groundColor) three.hemi.groundColor.set(0x303a52); three.hemi.intensity = 0.88; }
+    three.hemiBase = 0.88;
+    if (three.sunLight) { three.sunLight.color.set(0xbccfee); three.sunLight.intensity = 0.8; } // soft cool moonlight on the board
+    if (three.sea) { three.sea.material.color.set(0x1d4274); three.sea.material.metalness = 0.7; three.sea.material.roughness = 0.16; }
+    if (three.sunOrb) three.sunOrb.material.color.set(0xf4f8ff);   // bright pale moon
+    if (three.sunGlow) { three.sunGlow.material.color.set(0xd6e6ff); three.sunGlow.material.opacity = 0.42; }
+    if (three.cloudMat) { three.cloudMat.color.set(0x5a6c8c); three.cloudMat.opacity = 0.72; } // dim moonlit clouds
   } else {
-    // BRIGHT DAY — clear sky & deep blue ocean (balanced, not blown-out)
-    three.scene.background = new THREE.Color('#79bfe8');
-    three.scene.fog = new THREE.Fog('#aed6ef', 60, 150);
-    if (three.hemi) { three.hemi.color.set(0xbcdcf2); if (three.hemi.groundColor) three.hemi.groundColor.set(0x5f7050); three.hemi.intensity = 0.86; }
-    three.hemiBase = 0.86;
-    if (three.sunLight) { three.sunLight.color.set(0xffe9c2); three.sunLight.intensity = 0.95; }
-    if (three.sea) { three.sea.material.color.set(0x1f80b2); three.sea.material.metalness = 0.5; three.sea.material.roughness = 0.26; }
-    if (three.sunOrb) three.sunOrb.material.color.set(0xffeec2);   // warm sun
-    if (three.sunGlow) three.sunGlow.material.color.set(0xffe2a0);
+    // SUNNY DAY — clear bright sky & relaxing light-blue ocean
+    three.scene.background = new THREE.Color('#8fd0ec');
+    three.scene.fog = new THREE.Fog('#bfe3f4', 62, 158);
+    if (three.hemi) { three.hemi.color.set(0xc6e6f6); if (three.hemi.groundColor) three.hemi.groundColor.set(0x647358); three.hemi.intensity = 0.77; }
+    three.hemiBase = 0.77;
+    if (three.sunLight) { three.sunLight.color.set(0xffeccb); three.sunLight.intensity = 0.87; }
+    if (three.sea) { three.sea.material.color.set(0x3399cf); three.sea.material.metalness = 0.55; three.sea.material.roughness = 0.34; }
+    if (three.sunOrb) three.sunOrb.material.color.set(0xfff0c6);   // warm sun
+    if (three.sunGlow) { three.sunGlow.material.color.set(0xffe2a0); three.sunGlow.material.opacity = 0.24; }
+    if (three.cloudMat) { three.cloudMat.color.set(0xffffff); three.cloudMat.opacity = 0.82; } // bright daytime clouds
   }
   refreshNightEffects();
 }
@@ -1068,10 +1229,14 @@ function applySceneNight(on) {
 function refreshNightEffects() {
   const on = gfx.night;
   if (three.torches) three.torches.forEach((to) => {
-    // campfires stay lit day & night; handheld torches only light up at night
-    if (to.flame) to.flame.visible = to.campfire ? true : on;
-    if (to.glow && to.glow.material && to.glow.material.emissive) to.glow.material.emissive.setHex(on ? 0xff7a1a : 0x000000);
-    if (to.light) to.light.visible = (to.campfire || on) && gfx.extreme;
+    // nothing burns during the day — kiln/desert campfires and handheld torches
+    // all only light up at night.
+    if (to.flame) to.flame.visible = on;
+    if (to.glow) {
+      to.glow.visible = on; // hide the orange glow mesh entirely by day
+      if (to.glow.material && to.glow.material.emissive) to.glow.material.emissive.setHex(on ? 0xff7a1a : 0x000000);
+    }
+    if (to.light) to.light.visible = on && gfx.extreme;
   });
   if (three.cottageWindows) three.cottageWindows.forEach((w) => w.material.emissive.setHex(on ? 0xffcf7a : 0x000000));
   if (three.barNeon) three.barNeon.forEach((n) => {
@@ -1109,11 +1274,14 @@ function animate() {
     const amp = gfx.night ? 0.34 : 0.30;   // crest height
     const amp2 = gfx.night ? 0.30 : 0.26;
     const chop = gfx.night ? 0.20 : 0.14;  // cross-chop
+    const rip = gfx.night ? 0.10 : 0.08;   // fine high-frequency ripples (surface texture)
     for (let i = 0; i < pos.count; i++) {
       const x = base[i * 3], y = base[i * 3 + 1];
       const z = Math.sin(x * 0.22 + t * spd) * amp
               + Math.cos(y * 0.26 + t * (spd * 0.82)) * amp2
-              + Math.sin((x + y) * 0.13 + t * (spd * 1.25)) * chop;
+              + Math.sin((x + y) * 0.13 + t * (spd * 1.25)) * chop
+              + Math.sin(x * 0.62 - y * 0.55 + t * (spd * 1.9)) * rip
+              + Math.cos((x - y) * 0.78 + t * (spd * 2.3)) * rip * 0.7;
       pos.array[i * 3 + 2] = z;
     }
     pos.needsUpdate = true;
@@ -1157,6 +1325,12 @@ function animate() {
     if (to.light && to.light.visible) to.light.intensity = to.baseI * (0.8 + Math.sin(t * 16 + to.ph) * 0.25);
   });
 
+  // drifting clouds (slowly cross the sky, wrap around)
+  if (three.clouds) three.clouds.forEach((cl) => {
+    cl.position.x += cl.userData.speed * 0.016;
+    if (cl.position.x > 90) cl.position.x = -90;
+  });
+
   // circle + flap the birds
   if (three.birds) {
     three.birds.forEach((bird) => {
@@ -1170,6 +1344,8 @@ function animate() {
   }
 
   three.controls.update();
+  // mini map — redraw every other frame so it stays in sync with camera rotation
+  if ((frame & 1) === 0 && gameScreen && !gameScreen.classList.contains('hidden')) drawMiniMap();
   // Refresh shadows on a throttle in Extreme (every 4th frame) — the props that
   // move are tiny, so 15Hz shadow updates are visually indistinguishable yet
   // cut the shadow-pass GPU cost ~75%. Simple mode skips shadows entirely.
@@ -1218,17 +1394,20 @@ function ensureBoard() {
     three.boardGroup.add(mesh);
     three.hexMeshes.push(mesh);
 
-    // number token — a billboard that always renders ON TOP of terrain so big
-    // props (mountains, kilns) never fully hide it. Floats just above the tile.
+    // number token — a flat disc STUCK to the tile's top face. It is depth-tested
+    // (depthTest on) so 3D props sitting on the tile naturally obscure it. Large
+    // centerpiece props are biased toward the tile edges (see buildTerrain) so the
+    // number stays partly readable, while small decor may cover it.
     if (hex.number) {
       const tex = tokenTexture(hex.number);
-      const spr = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: tex, transparent: true, depthTest: false, depthWrite: false,
-      }));
-      spr.scale.set(HEX_R() * 0.62, HEX_R() * 0.62, 1);
-      spr.position.set(TX(hex.cx), TILE_H + 0.7, TZ(hex.cy));
-      spr.renderOrder = 900;
-      three.boardGroup.add(spr);
+      const disc = new THREE.Mesh(
+        new THREE.PlaneGeometry(HEX_R() * 0.6, HEX_R() * 0.6),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })
+      );
+      disc.rotation.x = -Math.PI / 2;            // lay flat on the tile top
+      disc.position.set(TX(hex.cx), TILE_H + 0.04, TZ(hex.cy));
+      disc.renderOrder = 1;                       // draw just above the tile face
+      three.boardGroup.add(disc);
     }
   });
 
@@ -1304,6 +1483,11 @@ function ensureBoard() {
     three.edgeMarkers.push(m);
   });
 
+  // Newly built terrain humans carry torches whose flames default to OFF. Apply
+  // the current night/extreme state now so handheld torches light up at night
+  // (this also covers starting a game with night mode already persisted).
+  refreshNightEffects();
+
   resetCamera();
 }
 
@@ -1335,9 +1519,17 @@ function buildHexMesh(hex) {
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  // planar UVs (mapped from each vertex's position within the tile) so the subtle
+  // ground texture sits flat on the top face.
+  const uvs = [];
+  const R2 = HEX_R() * 2;
+  for (let i = 0; i < positions.length; i += 3) {
+    uvs.push((positions[i] - cx) / R2 + 0.5, (positions[i + 2] - cz) / R2 + 0.5);
+  }
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geo.computeVertexNormals();
-  // two-tone: rocky/sandy lower band shows below the waterline
-  const mat = new THREE.MeshStandardMaterial({ color: RES_3D[hex.resource], roughness: 0.72, flatShading: true, side: THREE.DoubleSide });
+  // base tint comes from the texture; gentle mottling keeps the tile from looking flat
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: tileTexture(hex.resource), roughness: 0.72, flatShading: true, side: THREE.DoubleSide });
   return new THREE.Mesh(geo, mat);
 }
 
@@ -1394,6 +1586,24 @@ function hexRandPoint(hex, rng, spread = 0.78) {
   return { x: cx + px * r * 0.82, z: cz + pz * r * 0.82, cx, cz };
 }
 
+// A point biased toward the tile EDGES (an annulus that avoids the centre). Used
+// to keep large centerpiece props (big peaks, furnaces, kilns) off the middle of
+// the tile so the flat number disc underneath stays partly readable.
+function hexEdgePoint(hex, rng, minR = 0.45, maxR = 0.72) {
+  const cx = TX(hex.cx), cz = TZ(hex.cy);
+  const ang = rng() * Math.PI * 2;
+  const rad = HEX_R() * (minR + rng() * (maxR - minR));
+  return { x: cx + Math.cos(ang) * rad, z: cz + Math.sin(ang) * rad, cx, cz };
+}
+
+// Nudge a centroid outward from a tile centre toward an edge by a fixed fraction
+// of the hex radius, at a random angle — keeps cluster centerpieces off-centre.
+function nudgeToEdge(cx, cz, rng, frac = 0.5) {
+  const ang = rng() * Math.PI * 2;
+  const rad = HEX_R() * frac;
+  return { x: cx + Math.cos(ang) * rad, z: cz + Math.sin(ang) * rad };
+}
+
 function regMesh(obj) { obj.traverse((o) => { if (o.isMesh) o.castShadow = true; }); return obj; }
 
 function buildTerrain(board) {
@@ -1429,7 +1639,9 @@ function buildForest(board, idxs) {
     const bigs = denseCount(4, 2), smalls = denseCount(14, 4);          // denser forest (Extreme)
     for (let i = 0; i < bigs + smalls; i++) {
       const big = i < bigs;
-      const p = hexRandPoint(hex, rng, big ? 0.55 : 0.88);
+      // big trees hug the tile edges (keep the centre clear for the number disc);
+      // small trees may scatter anywhere, including over the number.
+      const p = big ? hexEdgePoint(hex, rng, 0.42, 0.7) : hexRandPoint(hex, rng, 0.88);
       const size = big ? 1.3 + rng() * 0.6 : 0.45 + rng() * 0.5;
       const tree = regMesh(makeTree(size, rng));
       tree.position.set(p.x, TILE_H, p.z);
@@ -1742,7 +1954,7 @@ function buildMountains(board, idxs) {
       const rng = mulberry32(hid * 613 + 2);
       const peaks = denseCount(3 + Math.floor(rng() * 2), 1);
       for (let i = 0; i < peaks; i++) {
-        const p = hexRandPoint(hex, rng, 0.7);
+        const p = hexEdgePoint(hex, rng, 0.4, 0.72); // keep peaks off the tile centre
         const tier = TIERS[Math.floor(rng() * 2)]; // small or large
         addBigMountain(p.x, p.z, tier, hid * 97 + i);
       }
@@ -1755,11 +1967,13 @@ function buildMountains(board, idxs) {
   } else {
     const hex = board.hexes[idxs[0]];
     const rng = mulberry32(idxs[0] * 71 + 4);
-    // a cluster of varied peaks (very-large center + small/large around)
-    addBigMountain(TX(hex.cx), TZ(hex.cy), TIERS[2], idxs[0] * 17);
+    // a cluster of varied peaks — keep the very-large peak OFF-CENTRE (toward an
+    // edge) so the tile's number disc stays partly readable underneath.
+    const big = hexEdgePoint(hex, rng, 0.42, 0.62);
+    addBigMountain(big.x, big.z, TIERS[2], idxs[0] * 17);
     const peaks = denseCount(4, 1);
     for (let i = 0; i < peaks; i++) {
-      const p = hexRandPoint(hex, rng, 0.72);
+      const p = hexEdgePoint(hex, rng, 0.4, 0.72);
       const tier = TIERS[Math.floor(rng() * 2)];
       addBigMountain(p.x, p.z, tier, idxs[0] * 53 + i);
     }
@@ -1930,13 +2144,16 @@ function buildBrickworks(board, idxs) {
   // centroid of the cluster
   const cx = region.reduce((s, r) => s + r.x, 0) / region.length;
   const cz = region.reduce((s, r) => s + r.z, 0) / region.length;
-  // big OPEN FURNACE as the centerpiece, with the old kiln beside it
+  const brng = mulberry32(idxs[0] * 419 + 1);
+  // big OPEN FURNACE as the centerpiece, nudged toward an edge (with the old kiln
+  // beside it) so the tile number disc underneath stays partly readable.
+  const fpos = nudgeToEdge(cx, cz, brng, 0.5);
   const furnace = regMesh(makeFurnace());
-  furnace.position.set(cx, TILE_H, cz);
+  furnace.position.set(fpos.x, TILE_H, fpos.z);
   furnace.scale.setScalar(idxs.length > 1 ? 1.25 : 0.95);
   three.boardGroup.add(furnace);
   const kiln = regMesh(makeKiln());
-  kiln.position.set(cx + HEX_R() * 0.5, TILE_H, cz + HEX_R() * 0.22);
+  kiln.position.set(fpos.x + HEX_R() * 0.5, TILE_H, fpos.z + HEX_R() * 0.22);
   kiln.scale.setScalar(idxs.length > 1 ? 1.3 : 1.0);
   three.boardGroup.add(kiln);
 
@@ -2039,6 +2256,9 @@ function makeKiln() {
     new THREE.MeshBasicMaterial({ color: 0xff8a2a }));
   glow.position.set(0, 0.3, 0.5);
   g.add(body, top, glow);
+  // register the glow so the kiln only burns at night (off during the day)
+  three.torches = three.torches || [];
+  three.torches.push({ glow, ph: Math.random() * 6, island: false, campfire: true });
   return g;
 }
 
@@ -2744,6 +2964,47 @@ function onPick(e) {
 // ===================================================================
 // TEXTURE HELPERS
 // ===================================================================
+
+// Subtle per-resource ground texture for the tile tops — gentle organic mottling
+// (soft lighter/darker patches + fine speckle) so tiles don't read as flat, bland
+// color. Deliberately blobby (no straight lines) to avoid the old shadow-acne look.
+const _tileTexCache = {};
+function clamp8(v) { return Math.max(0, Math.min(255, Math.round(v))); }
+function tileTexture(resource) {
+  if (_tileTexCache[resource]) return _tileTexCache[resource];
+  const base = RES_3D[resource] != null ? RES_3D[resource] : 0x88aabb;
+  const r = (base >> 16) & 255, g = (base >> 8) & 255, b = base & 255;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = `rgb(${r},${g},${b})`;
+  x.fillRect(0, 0, 128, 128);
+  const rng = mulberry32(resource.length * 9173 + r * 7 + g * 13 + b * 17);
+  // soft mottled patches
+  for (let i = 0; i < 80; i++) {
+    const px = rng() * 128, py = rng() * 128, rad = 6 + rng() * 24;
+    const d = 14 + rng() * 14;
+    const sign = rng() < 0.5 ? 1 : -1;
+    const cr = clamp8(r + sign * d), cg = clamp8(g + sign * d), cb = clamp8(b + sign * d);
+    const grad = x.createRadialGradient(px, py, 0, px, py, rad);
+    grad.addColorStop(0, `rgba(${cr},${cg},${cb},0.16)`);
+    grad.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+    x.fillStyle = grad;
+    x.beginPath(); x.arc(px, py, rad, 0, Math.PI * 2); x.fill();
+  }
+  // fine speckle grain
+  for (let i = 0; i < 500; i++) {
+    const px = rng() * 128, py = rng() * 128;
+    x.fillStyle = rng() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+    x.fillRect(px, py, 1, 1);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  _tileTexCache[resource] = t;
+  return t;
+}
+
 function tokenTexture(number) {
   const c = document.createElement('canvas');
   c.width = c.height = 128;

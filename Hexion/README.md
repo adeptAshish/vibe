@@ -84,3 +84,7 @@ public/
   style.css
   client3d.js    # Three.js scene, pieces, camera, raycasting + shared sidebar logic
 ```
+
+## Technical documentation
+
+For the full tech stack, architecture, network protocol, and game-engine reference, see [TECHNICAL.md](TECHNICAL.md).

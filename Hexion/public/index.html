@@ -52,9 +52,10 @@
           <!-- LEFT: admin / controls -->
           <div class="lobby-left">
             <div class="room-code">Room code: <span id="roomCode"></span></div>
-            <p class="hint">Share the room code with friends (they open this site and click Join).</p>
+            <p class="hint">Share the invite link (or room code) with friends on your Wi-Fi — they open it and they're in.</p>
             <ul id="playerList" class="player-list"></ul>
             <div id="hostControls" class="hidden">
+              <button id="inviteBtn" class="primary full">🔗 Copy invite link</button>
               <div class="setting-row">
                 <label>⏱️ Turn timer</label>
                 <select id="timerSelect">
@@ -130,6 +131,10 @@
         <div id="banner" class="banner"></div>
         <div id="diceFx" class="dice-fx hidden"><span id="die1">⚀</span><span id="die2">⚀</span></div>
         <div class="hint-3d">🖱️ Drag to orbit · scroll to zoom · right-drag to pan</div>
+        <div id="miniMapWrap" class="minimap-wrap" title="Mini map — rotates with your view">
+          <div class="minimap-label">🧭 Map</div>
+          <canvas id="miniMap" width="156" height="156"></canvas>
+        </div>
       </div>
 
       <aside class="sidebar">

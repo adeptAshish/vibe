@@ -1,0 +1,295 @@
+/* ============================================================
+   Sketchsy — vibrant, animated design system
+   Colors are HSL-token driven & animated (no static flat hex).
+   ============================================================ */
+
+:root {
+  /* Animated brand hues (cycled by the @keyframes hueShift on body). */
+  --h1: 280;
+  --h2: 200;
+  --h3: 330;
+
+  --bg-0: hsl(265 60% 8%);
+  --bg-1: hsl(258 55% 12%);
+  --ink: hsl(280 30% 96%);
+  --ink-soft: hsl(280 20% 72%);
+  --ink-faint: hsl(280 15% 55%);
+
+  --c-primary: hsl(var(--h1) 90% 64%);
+  --c-secondary: hsl(var(--h2) 90% 60%);
+  --c-accent: hsl(var(--h3) 90% 64%);
+  --c-good: hsl(145 75% 52%);
+  --c-warn: hsl(38 95% 58%);
+  --c-bad: hsl(355 85% 62%);
+
+  --glass: hsla(270 60% 30% / 0.28);
+  --glass-strong: hsla(270 60% 24% / 0.55);
+  --stroke: hsla(280 80% 80% / 0.18);
+  --shadow: 0 18px 50px -12px hsla(280 80% 4% / 0.7);
+
+  --radius: 20px;
+  --radius-sm: 12px;
+  --font: 'Segoe UI', 'Trebuchet MS', system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; }
+
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg-0);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  animation: hueShift 26s linear infinite;
+}
+
+/* The living, breathing background */
+#root::before {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  z-index: -2;
+  background:
+    radial-gradient(40% 50% at 18% 22%, hsla(var(--h1) 90% 55% / 0.55), transparent 60%),
+    radial-gradient(45% 55% at 82% 18%, hsla(var(--h2) 90% 55% / 0.45), transparent 60%),
+    radial-gradient(50% 60% at 50% 92%, hsla(var(--h3) 90% 55% / 0.5), transparent 65%),
+    linear-gradient(160deg, var(--bg-1), var(--bg-0));
+  filter: saturate(1.1);
+  animation: drift 18s ease-in-out infinite alternate;
+}
+
+#root::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(hsla(0 0% 100% / 0.06) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(circle at 50% 40%, black, transparent 80%);
+  animation: floaty 12s ease-in-out infinite alternate;
+}
+
+@keyframes hueShift {
+  0% { --h1: 280; --h2: 200; --h3: 330; }
+  33% { --h1: 200; --h2: 150; --h3: 280; }
+  66% { --h1: 330; --h2: 280; --h3: 40; }
+  100% { --h1: 280; --h2: 200; --h3: 330; }
+}
+@keyframes drift {
+  0% { transform: translate3d(-2%, -1%, 0) scale(1.05) rotate(0deg); }
+  100% { transform: translate3d(2%, 2%, 0) scale(1.1) rotate(4deg); }
+}
+@keyframes floaty {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-18px); }
+}
+@keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes wiggle { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+@keyframes glowPulse {
+  0%,100% { box-shadow: 0 0 0 0 hsla(var(--h1) 90% 60% / 0.5); }
+  50% { box-shadow: 0 0 0 14px hsla(var(--h1) 90% 60% / 0); }
+}
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---------- Layout ---------- */
+.app { height: 100%; display: flex; flex-direction: column; }
+.center-screen {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.row { display: flex; gap: 12px; align-items: center; }
+.wrap { flex-wrap: wrap; }
+.spread { justify-content: space-between; }
+.grow { flex: 1; }
+.scroll { overflow-y: auto; }
+
+/* ---------- Glass cards ---------- */
+.card {
+  background: var(--glass);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow: var(--shadow);
+  padding: 22px;
+  animation: rise 0.5s ease both;
+}
+.card.solid { background: var(--glass-strong); }
+.card.tight { padding: 14px; }
+
+/* ---------- Brand ---------- */
+.brand {
+  font-weight: 900;
+  letter-spacing: -1px;
+  background: linear-gradient(100deg, var(--c-primary), var(--c-secondary), var(--c-accent), var(--c-primary));
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+.brand.xl { font-size: clamp(40px, 6.5vw, 72px); line-height: 0.95; }
+.brand.lg { font-size: 34px; }
+.tagline { color: var(--ink-soft); font-size: 16px; }
+
+/* ---------- Buttons ---------- */
+button { font-family: inherit; cursor: pointer; border: none; color: inherit; }
+.btn {
+  position: relative;
+  border-radius: 999px;
+  padding: 14px 26px;
+  font-size: 16px;
+  font-weight: 800;
+  color: white;
+  background: linear-gradient(120deg, var(--c-primary), var(--c-accent));
+  background-size: 200% 100%;
+  box-shadow: 0 10px 24px -8px hsla(var(--h1) 90% 50% / 0.7);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background-position 0.4s ease;
+}
+.btn:hover { transform: translateY(-2px) scale(1.02); background-position: 100% 0; }
+.btn:active { transform: translateY(0) scale(0.98); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.4); }
+.btn.secondary { background: var(--glass-strong); border: 1px solid var(--stroke); box-shadow: none; }
+.btn.ghost { background: transparent; border: 1px solid var(--stroke); box-shadow: none; }
+.btn.good { background: linear-gradient(120deg, var(--c-good), hsl(170 75% 50%)); }
+.btn.sm { padding: 9px 16px; font-size: 14px; }
+.btn.block { width: 100%; }
+.btn.pulse { animation: glowPulse 2s infinite; }
+
+.chip {
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 700;
+  font-size: 14px;
+  background: var(--glass);
+  border: 1px solid var(--stroke);
+  color: var(--ink);
+  transition: transform 0.12s ease, background 0.2s ease, border-color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.chip:hover { transform: translateY(-1px); }
+.chip.active {
+  background: linear-gradient(120deg, var(--c-primary), var(--c-secondary));
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 8px 20px -8px hsla(var(--h1) 90% 50% / 0.7);
+}
+
+/* ---------- Inputs ---------- */
+.input, .textarea, .select {
+  width: 100%;
+  background: hsla(270 50% 12% / 0.5);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  padding: 13px 16px;
+  font-size: 16px;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.input:focus, .textarea:focus, .select:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 4px hsla(var(--h1) 90% 60% / 0.18);
+}
+.textarea { resize: vertical; min-height: 90px; }
+label.field { display: flex; flex-direction: column; gap: 7px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+
+/* ---------- Misc ---------- */
+.label { font-size: 13px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 1px; }
+.muted { color: var(--ink-faint); }
+.pill-code {
+  font-family: 'Consolas', monospace;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 5px;
+  background: var(--glass-strong);
+  border: 1px dashed var(--stroke);
+  padding: 8px 18px;
+  border-radius: 12px;
+  color: var(--c-secondary);
+}
+.divider { height: 1px; background: var(--stroke); margin: 6px 0; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: hsla(280 60% 60% / 0.4); border-radius: 99px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+.no-select { user-select: none; -webkit-user-select: none; }
+
+/* ============================================================
+   🌙 Night mode — calmer, dimmer, no animated hue cycling.
+   Toggled via <html data-theme="night"> by ThemeToggle.
+   ============================================================ */
+html[data-theme='night'] {
+  --bg-0: hsl(225 28% 6%);
+  --bg-1: hsl(225 24% 10%);
+  --ink: hsl(220 18% 90%);
+  --ink-soft: hsl(220 14% 64%);
+  --ink-faint: hsl(220 12% 48%);
+
+  --c-primary: hsl(225 55% 60%);
+  --c-secondary: hsl(200 50% 58%);
+  --c-accent: hsl(255 45% 62%);
+  --c-good: hsl(150 45% 50%);
+  --c-warn: hsl(40 70% 56%);
+  --c-bad: hsl(355 60% 58%);
+
+  --glass: hsla(225 30% 22% / 0.34);
+  --glass-strong: hsla(225 30% 16% / 0.6);
+  --stroke: hsla(220 30% 70% / 0.14);
+  --shadow: 0 18px 50px -12px hsla(225 60% 2% / 0.8);
+}
+
+/* Stop the hue-cycling animation and dim the glowing background. */
+html[data-theme='night'] body { animation: none; }
+html[data-theme='night'] #root::before {
+  background:
+    radial-gradient(45% 55% at 18% 20%, hsla(225 50% 30% / 0.4), transparent 60%),
+    radial-gradient(45% 55% at 82% 16%, hsla(210 45% 28% / 0.3), transparent 60%),
+    radial-gradient(55% 60% at 50% 95%, hsla(255 45% 28% / 0.32), transparent 65%),
+    linear-gradient(160deg, var(--bg-1), var(--bg-0));
+  filter: saturate(0.85) brightness(0.85);
+  animation: none;
+}
+html[data-theme='night'] #root::after { opacity: 0.5; animation: none; }
+/* Calm the shimmering brand text so it's restful at night. */
+html[data-theme='night'] .brand { animation: none; background-position: 0 0; }
+html[data-theme='night'] .btn.pulse { animation: none; }
+
+/* ---------- Floating theme toggle ---------- */
+.theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 120;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--glass-strong);
+  border: 1px solid var(--stroke);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow: var(--shadow);
+  transition: transform 0.15s ease, border-color 0.2s ease;
+}
+.theme-toggle:hover { transform: translateY(-2px) scale(1.04); border-color: var(--c-primary); }
+.theme-toggle:active { transform: scale(0.96); }
+.theme-toggle-icon { font-size: 16px; line-height: 1; }
+@media (max-width: 640px) {
+  .theme-toggle-label { display: none; }
+  .theme-toggle { padding: 9px 11px; }
+}
