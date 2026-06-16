@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useGame } from '../GameContext.jsx';
 
 export default function GameHeader() {
-  const { room, you, yourWord } = useGame();
+  const { room, you, yourWord, leaveRoom } = useGame();
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -11,6 +11,7 @@ export default function GameHeader() {
   }, []);
 
   const isDrawer = room.currentDrawerId === you;
+  const isHost = room.hostId === you;
   const drawer = room.players.find((p) => p.id === room.currentDrawerId);
   const total = room.settings.drawTime;
   const remaining = room.turnEndsAt ? Math.max(0, Math.ceil((room.turnEndsAt - now) / 1000)) : null;
@@ -21,10 +22,20 @@ export default function GameHeader() {
 
   const danger = remaining != null && remaining <= 10;
 
+  const goHome = () => {
+    const msg = isHost ? 'Leave and end the game for everyone?' : 'Leave the game?';
+    if (window.confirm(msg)) leaveRoom();
+  };
+
   return (
     <div className="game-header card tight">
-      <div className="round-badge">
-        Round <b>{room.currentRound}</b>/{room.totalRounds}
+      <div className="header-left">
+        <button className="btn ghost sm" onClick={goHome} title="Back to home">
+          🏠
+        </button>
+        <div className="round-badge">
+          Round <b>{room.currentRound}</b>/{room.totalRounds}
+        </div>
       </div>
 
       <div className="word-zone">

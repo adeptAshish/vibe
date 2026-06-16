@@ -111,11 +111,11 @@ export default function Home() {
                         onKeyDown={(e) => e.key === 'Enter' && doJoin()}
                       />
                     </label>
-                    <div className="row">
-                      <button className="btn good grow" disabled={busy} onClick={doJoin}>
+                    <div className="stack">
+                      <button className="btn good block" disabled={busy} onClick={doJoin}>
                         Join Game
                       </button>
-                      <button className="btn ghost" onClick={() => setMode('choose')}>
+                      <button className="btn ghost block sm" onClick={() => setMode('choose')}>
                         Back
                       </button>
                     </div>
