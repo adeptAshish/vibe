@@ -45,7 +45,38 @@ code.
 > Tip: if friends can't connect, allow Node.js through your firewall for *Private*
 > networks (Windows will usually prompt the first time).
 
-## 🕹️ How to play
+## � Choose the right WiFi (important!)
+
+**Use a personal network or your phone's hotspot — avoid office / corporate / public WiFi.**
+
+Many company, school, café, and guest networks turn on **client isolation** (also called
+*AP isolation*). This is a security feature that blocks devices on the same WiFi from
+talking to each other. When it's on, Sketchsy will look broken even though everything is
+set up correctly:
+
+- ✅ The server runs fine and works on the host machine (`http://localhost:3000`).
+- ✅ Your firewall rule is in place.
+- ❌ Friends still get **"can't reach this page" / `ERR_CONNECTION_TIMED_OUT`** on the Network URL.
+
+That timeout (as opposed to "connection refused") is the tell-tale sign the network — not
+your PC — is dropping the traffic. You usually can't turn client isolation off because it's
+controlled by IT / the router.
+
+**Quick test:** from a friend's device, run `ping <your-network-ip>` (e.g.
+`ping 192.168.5.242`). If it times out, the network is isolating you.
+
+**Best fix — use a mobile hotspot:**
+
+1. Turn on your phone's hotspot.
+2. Connect **both** the host PC and all players to that hotspot.
+3. (Re)start the server and share the new Network URL it prints.
+
+Personal hotspots and home routers don't isolate clients, so direct, low-latency LAN play
+just works. (A free tunnel like Cloudflare `trycloudflare` or ngrok is an alternative for
+*remote* friends, but it exposes the game publicly, adds latency, and the URL changes each
+run — so a hotspot is better whenever everyone is physically together.)
+
+## �🕹️ How to play
 
 1. **Create a room** → you become the host.
 2. Configure word source, genres, difficulty, rounds, draw time, custom lists.
