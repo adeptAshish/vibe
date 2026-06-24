@@ -65,3 +65,16 @@ out/
 .npm/
 .yarn/
 .yarn-integrity
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.python-version
