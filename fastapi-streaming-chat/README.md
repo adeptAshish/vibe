@@ -15,6 +15,8 @@ var to use **Azure OpenAI**.
 | Swappable provider (mock/Azure) | `app/providers.py` |
 | Token budgeting | `max_tokens` in `schemas.py` |
 
+> 📘 **Industry standards deep-dive:** see [`docs/INDUSTRY_STANDARDS.md`](docs/INDUSTRY_STANDARDS.md) — every practice mapped to exact code + why it helps + interview angle.
+
 ## Run
 ```powershell
 python -m venv .venv; .\.venv\Scripts\Activate.ps1

@@ -1,4 +1,4 @@
-# Senior-Level Concepts — what this solution does and why
+# Industry Standards — what this solution does and why
 
 This doc maps each **industry-standard practice** in the streaming chat API to the
 **exact code** that implements it, then explains **how it actually helps** and the
